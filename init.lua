@@ -90,6 +90,51 @@ P.S. You can delete this when you're done too. It's your config now! :)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+vim.keymap.set('n', '<leader>pv', vim.cmd.Ex)
+
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
+vim.opt.expandtab = true
+
+vim.opt.linebreak = true
+vim.opt.breakat = " ^!@-*+;:,./?.~(){}[]"
+vim.opt.breakindent = false
+vim.opt.showbreak = "↪ "
+
+vim.api.nvim_create_user_command("ConvertIndent", function(opts)
+    local to = opts.args  -- "tabs" or "spaces"
+
+    if to == "spaces" then
+        vim.opt_local.expandtab = true
+        vim.cmd("retab")
+    elseif to == "tabs" then
+        vim.opt_local.expandtab = false
+        vim.cmd("retab!")
+    else
+        vim.notify("Usage: :ConvertIndent spaces|tabs", vim.log.levels.ERROR)
+    end
+end, {
+    nargs = 1,  -- expects exactly 1 argument
+    complete = function()
+        return { "spaces", "tabs" }  -- tab completion options
+    end,
+    desc = "Convert file indentation to spaces or tabs",
+})
+
+vim.keymap.set('n', '<leader>fr', function()
+  local input = vim.fn.input('Find & Replace: ')
+  if input == '' then return end
+
+  -- Split on the first space to get find and replace parts
+  local find, replace = input:match('^(%S+)%s+(.*)')
+  if not find then
+    vim.notify('Usage: <find> <replace>', vim.log.levels.WARN)
+    return
+  end
+
+  vim.cmd(string.format('%%s/%s/%s/gc', find, replace))
+end, { desc = 'Find and replace with confirm' })
+
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = false
 
@@ -102,7 +147,7 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -198,10 +243,10 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- TIP: Disable arrow keys in normal mode
--- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
--- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
--- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
--- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
+vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
+vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
+vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
@@ -256,7 +301,26 @@ rtp:prepend(lazypath)
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
   -- NOTE: Plugins can be added via a link or github org/name. To run setup automatically, use `opts = {}`
-  { 'NMAC427/guess-indent.nvim', opts = {} },
+  { 
+    'NMAC427/guess-indent.nvim',
+    config = function()
+      require('guess-indent').setup({
+        auto_cmd = true,
+        override_editorconfig = false,
+        filetype_exclude = {},
+        buftype_exclude = {},
+        on_tab_options = {
+          ["expandtab"] = false,
+        },
+        on_space_options = {
+          ["expandtab"] = true,
+          ["tabstop"] = 4,
+          ["softtabstop"] = 4,
+          ["shiftwidth"] = 4,
+        },
+      })
+    end,
+  },
 
   -- Alternatively, use `config = function() ... end` for full control over the configuration.
   -- If you prefer to call `setup` explicitly, use:
@@ -600,10 +664,9 @@ require('lazy').setup({
       --  See `:help lsp-config` for information about keys and how to configure
       ---@type table<string, vim.lsp.Config>
       local servers = {
-        -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
-        -- rust_analyzer = {},
+        clangd = {},
+        pyright = {},
+        texlab = {},
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
@@ -948,7 +1011,7 @@ require('lazy').setup({
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
   -- require 'kickstart.plugins.debug',
-  -- require 'kickstart.plugins.indent_line',
+  require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
@@ -985,6 +1048,7 @@ require('lazy').setup({
     },
   },
 })
+
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
